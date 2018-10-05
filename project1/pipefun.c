@@ -2,7 +2,7 @@
 #include <stdio.h>
 
 
-void pipfun(char text[]){
+void pipefun(char text[]){
   printf("%s", text);
   return;
 }
