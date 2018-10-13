@@ -1,4 +1,4 @@
-CC=gcc
+CC=gcc 
 CFLAGS=-I.
 DEPS = projectheader.h
 
@@ -6,7 +6,7 @@ DEPS = projectheader.h
 	$(CC) -c -o $@ $< $(CFLAGS)
 
 main : main.o pipefun.o socketfun.o sharedmemfun.o
-	$(CC) -o runme main.o pipefun.o socketfun.o sharedmemfun.o
+	$(CC) -o runme main.o pipefun.o socketfun.o sharedmemfun.o -pthread -lrt
 
 clean:
 	-rm *.o runme
