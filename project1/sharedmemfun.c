@@ -1,8 +1,8 @@
 #include "projectheader.h"
 #include <stdio.h>
 
-#define SHMEM_SIZE 2048
-#define CHAR_BLOC_SIZE 2000
+#define SHMEM_SIZE 4098
+#define CHAR_BLOC_SIZE 4000
 #define SEM_BLOCS "/blocks_to_send"
 
 void* make_shared_mem(size_t size){
@@ -50,7 +50,7 @@ void sharedmemfun(char text[], char searchstring[]){
   }
 
 
-  void* shmem1 = make_shared_mem(1024);
+  void* shmem1 = make_shared_mem(SHMEM_SIZE);
   void* shmem2 = make_shared_mem(1024);
   void* shmem3 = make_shared_mem(1024);
   void* shmem4 = make_shared_mem(1024);
@@ -64,15 +64,11 @@ void sharedmemfun(char text[], char searchstring[]){
 
   //only open the file if we're the parent
   if(pid != 0){ 
- 
+    printf("HELLO AM PARENT\n"); 
     sem_t *S_blocs_to_send = sem_open("S_blocs_to_send", 0);
     sem_t *S_slot = sem_open("S_slot", 0); 
     sem_t *S_bloc = sem_open("S_bloc", 0);
 
-
-    int fakeint;
-    sem_getvalue(S_blocs_to_send, &fakeint);
-    printf("From parent, blocs to send:  %d\n", fakeint);
 
     printf("Parent: opening file and reading lines\n");  
     fp = fopen(text, "r");
@@ -85,10 +81,10 @@ void sharedmemfun(char text[], char searchstring[]){
     //TODO this selects input on /n while child runs on periods
     int bloclength = 0;
     int thisLineLength = 0;
-    char str[1000]  =  "";
+    char str[CHAR_BLOC_SIZE]  =  "";
     while((read = getline(&line, &len, fp)) != -1){
       thisLineLength = strlen(line);
-      if (bloclength + thisLineLength < 1000){
+      if (bloclength + thisLineLength < CHAR_BLOC_SIZE){
         strcat(str, line);
         bloclength += thisLineLength;
       }else{
@@ -101,7 +97,7 @@ void sharedmemfun(char text[], char searchstring[]){
         sem_post(S_bloc);
         bloclength = 0;
         strcpy(str, "");
-        if (thisLineLength < 1000){
+        if (thisLineLength < CHAR_BLOC_SIZE){
           strcat(str, line);
         } else {
           printf("LINE TOO LONG\n");
@@ -117,10 +113,12 @@ void sharedmemfun(char text[], char searchstring[]){
     memcpy(shmem1, str, bloclength);
     sem_post(S_bloc);
    
-   // printf("Got past post bloc\n");
-    //printf(shmem1);
+
+ 
     bloclength = 0;
    sem_wait(S_blocs_to_send);
+
+   printf("lmfao AFTER WAIT BLOCS TO SEND\n");
    wait(NULL);
 
   }
@@ -131,9 +129,8 @@ void sharedmemfun(char text[], char searchstring[]){
   //*************
 
   if(pid == 0){
-     sleep(1);  
+    // sleep(1);  
      printf("Child: examining lines\n");
-    int avoidinf = 10;
 
     char **stringArray;
     int stringArrayLength = 100;
@@ -144,8 +141,6 @@ void sharedmemfun(char text[], char searchstring[]){
     char modifiedSearchstring[] = " ";
     strcat(modifiedSearchstring, searchstring);
     strcat(modifiedSearchstring, " ");
-
-    printf("MOD SS%s", modifiedSearchstring);
 
     FILE *resultsfp = fopen("shmemResults.txt", "w+");
 
@@ -162,27 +157,27 @@ void sharedmemfun(char text[], char searchstring[]){
     sem_getvalue(S_bloc, &sem_bloc_val);
     //printf("S_blocs_to_send %d\n", sem_blocs_to_send_val);
     if (sem_blocs_to_send_val == 0){
-      printf("blocs to send is zero\n");
+      //printf("blocs to send is zero\n");
       break;
     }
 
-    char thisbloc[1000] = "";
+    char thisbloc[CHAR_BLOC_SIZE] = "";
     char *ptr = thisbloc;
     sem_wait(S_bloc);
-    memcpy(ptr, shmem1, 1000);
+    memcpy(ptr, shmem1, CHAR_BLOC_SIZE);
 
     int tokenLength = 0;
     char newline[3] = "\n";
     char period[2] = ".";
     char *token;
-    token = strtok(thisbloc, period);
+    token = strtok(thisbloc, newline);
 
     //scan the text
     while(token != NULL){ 
       tokenLength = strlen(token);
       //check if searchstring is in line
       if(strstr(token, searchstring) != NULL){
-        strcat(token, ".\n");
+        strcat(token, "\n");
         char* trimedToken = trimLeadingWhitespace(token);
 
         //add this match to our array of strings
@@ -194,7 +189,7 @@ void sharedmemfun(char text[], char searchstring[]){
         }
         currentStringArrayElement++;
       }
-      token = strtok(NULL, period);
+      token = strtok(NULL, newline);
     }//end of token loop
 
     sem_post(S_slot);
@@ -209,6 +204,8 @@ void sharedmemfun(char text[], char searchstring[]){
       fprintf(resultsfp, "%s\n", stringArray[i]);
     }
 
+    fclose(resultsfp);
+    printf("GOT RIGHT BEFORE EXIT CHILD\n");
     exit(0);
   }
 
@@ -222,9 +219,11 @@ void sharedmemfun(char text[], char searchstring[]){
       printf("File pointer is null\n");
     }
 
+    printf("before file open\n");
     fclose(fp);
+    printf("after file close\n");
   }
-
+  printf("before mummap\n");
   munmap(shmem1, SHMEM_SIZE);
   munmap(shmem2, SHMEM_SIZE);
   munmap(shmem3, SHMEM_SIZE);
@@ -234,10 +233,13 @@ void sharedmemfun(char text[], char searchstring[]){
   munmap(shmemout3, SHMEM_SIZE);
   munmap(shmemout4, SHMEM_SIZE);
 
+  printf("after mummap, before sum unlinnk\n");
   sem_unlink("S_blocs_to_send");
   sem_unlink("S_bloc");
   sem_unlink("S_slot");
+  printf("after sem unlink\n");
 
-  return;
+  exit(0);
+  //return;
 
 }//end of sharedmemfun        
