@@ -12,6 +12,18 @@ void* make_shared_mem(size_t size){
 }
 
 
+char* trimLeadingWhitespace(char* s) {
+    while(isspace(*s)) {
+        s++;
+    }
+    return s;
+}
+
+int charCompare (const void * a, const void * b) 
+{ 
+   return strcasecmp (*(const char **) a, *(const char **) b); 
+} 
+
 
 void sharedmemfun(char text[], char searchstring[]){
 
@@ -70,7 +82,7 @@ void sharedmemfun(char text[], char searchstring[]){
       exit(1);
     }
   
-
+    //TODO this selects input on /n while child runs on periods
     int bloclength = 0;
     int thisLineLength = 0;
     char str[1000]  =  "";
@@ -113,11 +125,29 @@ void sharedmemfun(char text[], char searchstring[]){
 
   }
 
-  //child section
+
+  //*************
+  //CHILD SECTION
+  //*************
+
   if(pid == 0){
      sleep(1);  
      printf("Child: examining lines\n");
     int avoidinf = 10;
+
+    char **stringArray;
+    int stringArrayLength = 100;
+    stringArray = (char **)malloc (sizeof (char *) * stringArrayLength);   
+    int currentStringArrayElement = 0;
+
+    //makes it " searchstring " instead of "searchstring"
+    char modifiedSearchstring[] = " ";
+    strcat(modifiedSearchstring, searchstring);
+    strcat(modifiedSearchstring, " ");
+
+    printf("MOD SS%s", modifiedSearchstring);
+
+    FILE *resultsfp = fopen("shmemResults.txt", "w+");
 
     while(1){
     //avoidinf = avoidinf - 1;
@@ -135,17 +165,13 @@ void sharedmemfun(char text[], char searchstring[]){
       printf("blocs to send is zero\n");
       break;
     }
-    //printf("after zero check\n");
 
     char thisbloc[1000] = "";
     char *ptr = thisbloc;
     sem_wait(S_bloc);
     memcpy(ptr, shmem1, 1000);
-   // printf("%s", thisbloc);
 
     int tokenLength = 0;
-    int returnstrLength = 0;
-    char returnstr[1000] = "";
     char newline[3] = "\n";
     char period[2] = ".";
     char *token;
@@ -154,28 +180,35 @@ void sharedmemfun(char text[], char searchstring[]){
     //scan the text
     while(token != NULL){ 
       tokenLength = strlen(token);
-      //printf(" %s\n", token);
       //check if searchstring is in line
       if(strstr(token, searchstring) != NULL){
         strcat(token, ".\n");
-        printf(" %s\n", token);
-        if(returnstrLength + tokenLength < 1000){
-          strcat(returnstr, token);
-          returnstrLength += tokenLength; 
-        }else{
-          //TODO
+        char* trimedToken = trimLeadingWhitespace(token);
+
+        //add this match to our array of strings
+        if (currentStringArrayElement < stringArrayLength){
+          stringArray[currentStringArrayElement] = strdup(trimedToken);
+        } else {
+          stringArray = realloc(stringArray, (2*stringArrayLength) * sizeof(char *));
+          stringArrayLength *= 2;
         }
+        currentStringArrayElement++;
       }
       token = strtok(NULL, period);
     }//end of token loop
+
     sem_post(S_slot);
 
     }//end of blocs loop
-    printf("end of blocs loop\n");
+    //printf("end of blocs loop\n");
 
-    //printf(returnstr);
-    //memcpy(shmemout1, returnstr, strlen(returnstr));
-    //printf("%s", shmem1);
+    qsort(stringArray, currentStringArrayElement, sizeof(char *), charCompare);
+
+    for(int i = 0; i<currentStringArrayElement; i++){
+      printf("%s\n\n", stringArray[i]);
+      fprintf(resultsfp, "%s\n", stringArray[i]);
+    }
+
     exit(0);
   }
 
