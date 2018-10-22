@@ -6,10 +6,12 @@
 #include <string.h>
 #include <unistd.h>
 #include <semaphore.h>
+#include <fcntl.h>
 
 #include <sys/mman.h>
 
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
 
