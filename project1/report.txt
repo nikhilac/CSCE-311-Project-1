@@ -1,0 +1,26 @@
+The shared memory function took
+
+
+Linux has pipes, FIFO named pipes, message queues, domain sockets, and shared memory.
+
+It's a good bet to use pipes when you only want to pass data from a parent to a child,
+but if data needs to go other places, you should use the FIFO named pipe.
+Domain sockets are special because data can pass both ways, so it is optimal when one has
+two processes that are sharing information with each other.
+Shared memory is useful because all processes have access to it and can see right away
+when data in the shared memory block changes. It is useful for projects involving many processes
+that all need the same area of data.
+
+
+Map-Reduce is a programming model that is designed to analize and process large sets of data
+by using paralellism and distributed computing. It begins by using mappers to work on smaller sets
+of data. Each mapper processes the data and emits to a local storage. A reducer then goes through
+the local data sets and combines or reduces them to a much larger, common data set. In this way,
+Map-Reduce can process large data sets in a fraction of the time it would take a single processor
+to do the same workload.
+
+
+It is painful to implement multithreaded Map-Reduce on one's own with POSIX threading, so people
+made Hadoop as an open source platform for distributed computing using Map-Reduce. It is easy to write
+code using Hadoop that can scale up to as many machines as one needs. This is the main reason
+Hadoop is such a powerful tool and is important in industry computing.
