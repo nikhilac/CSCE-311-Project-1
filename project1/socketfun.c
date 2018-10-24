@@ -1,4 +1,4 @@
-#include "stderr.h"
+//#include "stderr.h"
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -33,7 +33,8 @@ void wyslij(int socket, int fd)  // send fd by socket
     msg.msg_controllen = cmsg->cmsg_len;
 
     if (sendmsg(socket, &msg, 0) < 0)
-        err_syserr("Failed to send message\n");
+        printf("Failed to send message\n");
+        //err_syserr("Failed to send message\n");
 }
 
 static
@@ -52,14 +53,17 @@ int odbierz(int socket)  // receive fd from socket
     msg.msg_controllen = sizeof(c_buffer);
 
     if (recvmsg(socket, &msg, 0) < 0)
-        err_syserr("Failed to receive message\n");
+        printf("Failed to receive message\n");
+        //err_syserr("Failed to receive message\n");
 
     struct cmsghdr *cmsg = CMSG_FIRSTHDR(&msg);
 
-    err_remark("About to extract fd\n");
+    printf("About to extract fd\n");
+    //err_remark("About to extract fd\n");
     int fd;
     memmove(&fd, CMSG_DATA(cmsg), sizeof(fd));
-    err_remark("Extracted fd %d\n", fd);
+    printf("Extracted fd %d\n");
+    //err_remark("Extracted fd %d\n", fd);
 
     return fd;
 }
@@ -68,40 +72,46 @@ int main(int argc, char **argv)
 {
     const char *filename = "./z7.c";
 
-    err_setarg0(argv[0]);
-    err_setlogopts(ERR_PID);
+    //err_setarg0(argv[0]);
+    //err_setlogopts(ERR_PID);
     if (argc > 1)
         filename = argv[1];
     int sv[2];
     if (socketpair(AF_UNIX, SOCK_DGRAM, 0, sv) != 0)
-        err_syserr("Failed to create Unix-domain socket pair\n");
+        printf("Failed to create Unix-domain socket pair\n");
+        //err_syserr("Failed to create Unix-domain socket pair\n");
 
     int pid = fork();
     if (pid > 0)  // in parent
     {
-        err_remark("Parent at work\n");
+        printf("Parent at work\n");
+        //err_remark("Parent at work\n");
         close(sv[1]);
         int sock = sv[0];
 
         int fd = open(filename, O_RDONLY);
         if (fd < 0)
-            err_syserr("Failed to open file %s for reading\n", filename);
+            printf("Failed to pen file");
+            //err_syserr("Failed to open file %s for reading\n", filename);
 
         /* Read some data to demonstrate that file offset is passed */
         char buffer[32];
         int nbytes = read(fd, buffer, sizeof(buffer));
         if (nbytes > 0)
-            err_remark("Parent read: [[%.*s]]\n", nbytes, buffer);
+            printf("Parent read: \n");
+            //err_remark("Parent read: [[%.*s]]\n", nbytes, buffer);
 
         wyslij(sock, fd);
 
         close(fd);
         nanosleep(&(struct timespec){ .tv_sec = 1, .tv_nsec = 500000000}, 0);
-        err_remark("Parent exits\n");
+        printf("Parent exits\n");
+        //err_remark("Parent exits\n");
     }
     else  // in child
     {
-        err_remark("Child at play\n");
+        printf("Child at play\n");
+        //err_remark("Child at play\n");
         close(sv[0]);
         int sock = sv[1];
 
